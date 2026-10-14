@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}</style>
+<title>BTC 周期雷达</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700;900&display=swap">
+<style>
+/* 版式：研究简报。顶部结论带 + 粘性目录 + 单列分节；数据区用表格和按容器宽度重绘的 SVG */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#111823; --ink-2:#465263; --muted:#6f7a8c;
+  --line:#e0e5eb; --line-2:#c8d0da; --accent:#b4530a; --accent-soft:#fbefe4;
+  --good:#0b7a35; --good-bg:#e2f3e8; --bad:#c22f2f; --bad-bg:#fbe6e6;
+  --warn:#8f5600; --warn-bg:#fcf0d9; --neu:#556070; --neu-bg:#eaeef3;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --pos:#2a78d6; --neg:#e34948;
+  --grid:#e8ecf0; --axis:#c3cad3; --band:rgba(42,120,214,.06);
+  --f-display:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei","Hiragino Sans GB",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --f-chart:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1117; --panel:#151a22; --ink:#e8ecf1; --ink-2:#b4bcc8; --muted:#8c95a3;
+  --line:#252c36; --line-2:#343c48; --accent:#f08a3c; --accent-soft:#2a1d12;
+  --good:#46c372; --good-bg:#12291a; --bad:#ef6b6b; --bad-bg:#301616;
+  --warn:#e3aa40; --warn-bg:#2c2210; --neu:#a3acb9; --neu-bg:#1e242d;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --pos:#3987e5; --neg:#e66767;
+  --grid:#212831; --axis:#3a4350; --band:rgba(57,135,229,.08); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --panel:#151a22; --ink:#e8ecf1; --ink-2:#b4bcc8; --muted:#8c95a3;
+  --line:#252c36; --line-2:#343c48; --accent:#f08a3c; --accent-soft:#2a1d12;
+  --good:#46c372; --good-bg:#12291a; --bad:#ef6b6b; --bad-bg:#301616;
+  --warn:#e3aa40; --warn-bg:#2c2210; --neu:#a3acb9; --neu-bg:#1e242d;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --pos:#3987e5; --neg:#e66767;
+  --grid:#212831; --axis:#3a4350; --band:rgba(57,135,229,.08); color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--f-body);-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:clamp(28px,4.6vw,44px);font-weight:900;letter-spacing:.01em}
+h2{font-size:clamp(21px,2.6vw,27px);font-weight:700}
+h3{font-size:16px;margin:0;line-height:1.4}
+p{margin:0}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:500 12px/1.4 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lead{color:var(--ink-2);max-width:68ch}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+/* 顶部结论带 */
+.masthead{border-bottom:1px solid var(--line);background:var(--panel)}
+.masthead .wrap{padding-block:28px 24px;display:grid;gap:20px}
+.mast-top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.asof{font:500 13px/1.5 var(--f-mono);color:var(--muted)}
+.verdict{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:stretch}
+.verdict-main{border-left:4px solid var(--accent);padding:4px 0 4px 18px;display:grid;gap:10px;min-width:0}
+.verdict-main .phase{font:900 clamp(24px,3.4vw,34px)/1.2 var(--f-display)}
+.verdict-main ul{margin:0;padding-left:18px;color:var(--ink-2);display:grid;gap:4px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tile{background:var(--panel);padding:12px 14px;display:grid;gap:2px;min-width:0}
+.tile .k{font-size:12px;color:var(--muted)}
+.tile .v{font:600 22px/1.25 var(--f-mono)}
+.tile .d{font-size:12px;color:var(--ink-2)}
+
+/* 目录 */
+.toc{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.toc .wrap{display:flex;gap:6px;overflow-x:auto;padding-block:8px;scrollbar-width:none}
+.toc a{flex:none;font-size:13px;color:var(--ink-2);text-decoration:none;padding:4px 10px;border-radius:999px}
+.toc a:hover{background:var(--neu-bg);color:var(--ink)}
+
+/* 分节 */
+section{padding-block:40px 8px}
+.sec-head{display:grid;gap:8px;margin-bottom:20px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.stack{display:grid;gap:16px}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+
+/* 状态胶囊：图标 + 文字，不只靠颜色 */
+.pill{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-size:12px;font-weight:500;line-height:1;padding:5px 8px;border-radius:999px}
+.pill.good{color:var(--good);background:var(--good-bg)}
+.pill.bad{color:var(--bad);background:var(--bad-bg)}
+.pill.warn{color:var(--warn);background:var(--warn-bg)}
+.pill.neu{color:var(--neu);background:var(--neu-bg)}
+
+/* 表格 */
+.tscroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-size:12px;font-weight:500;color:var(--muted);background:var(--panel);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;white-space:nowrap}
+.ind-table{min-width:880px}
+.ind-table td:nth-child(1){min-width:150px;font-weight:500}
+.ind-table td:nth-child(2){min-width:150px;font-family:var(--f-mono);font-size:13px}
+.ind-table td:nth-child(4),.ind-table td:nth-child(5){min-width:120px;font-size:13px;color:var(--ink-2)}
+.ind-table td:nth-child(6){font-size:13px;color:var(--ink-2);min-width:200px}
+.cat-row td{background:var(--neu-bg);font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--ink-2);padding-block:6px}
+
+/* 筛选按钮 */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink-2);padding:4px 12px;border-radius:999px;cursor:pointer}
+.chip:hover{border-color:var(--ink-2)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.counts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+
+/* 图表 */
+.chart{position:relative;width:100%;min-width:0}
+.chart svg{display:block;overflow:visible}
+.ct-lab{font:12px var(--f-chart);fill:var(--muted)}
+.ct-val{font:600 12px var(--f-chart);fill:var(--ink)}
+.ct-strong{font:600 13px var(--f-chart);fill:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--ink-2);margin-bottom:8px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.legend i.sq{width:10px;height:10px;border-radius:2px}
+.tip{position:absolute;pointer-events:none;z-index:3;background:var(--panel);color:var(--ink);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.5;box-shadow:0 6px 20px rgba(0,0,0,.12);max-width:260px}
+.tip b{font-family:var(--f-mono)}
+
+/* 信号组合卡 */
+.sig{display:grid;gap:8px;align-content:start}
+.sig ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink-2)}
+.sig .then{font-size:13px;border-top:1px dashed var(--line-2);padding-top:8px}
+.sig-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+
+/* 舆情模型 */
+.srow{display:grid;grid-template-columns:minmax(0,2.2fr) 54px minmax(120px,1fr) minmax(0,1.4fr) 58px;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.srow:last-child{border-bottom:0}
+.srow .f{font-size:13px;min-width:0}
+.srow .f small{display:block;color:var(--muted);font-size:12px}
+.srow input[type=range]{width:100%;accent-color:var(--accent)}
+.dbar{position:relative;height:12px;background:var(--neu-bg);border-radius:3px}
+.dbar::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--axis)}
+.dbar span{position:absolute;top:1px;bottom:1px;border-radius:2px}
+.score-box{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:center;margin-bottom:12px}
+.score-big{font:600 44px/1 var(--f-mono)}
+.btn{font:inherit;font-size:13px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);padding:6px 14px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--ink-2)}
+
+/* 关键价位 */
+.levels{display:grid;gap:0}
+.lv{display:grid;grid-template-columns:96px 64px minmax(0,1fr);gap:12px;padding:7px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.lv:last-child{border-bottom:0}
+.lv .p{font:600 14px var(--f-mono)}
+.lv .dist{font:12px var(--f-mono);color:var(--muted);text-align:right}
+.lv.now{background:var(--accent-soft);border-radius:6px;padding-inline:8px;margin-inline:-8px;border-bottom-color:transparent}
+.lv .t{font-size:13px;color:var(--ink-2);min-width:0}
+.lv .tag{font-size:11px;margin-right:6px}
+
+/* 剧本 */
+.play{display:grid;gap:10px}
+.play .date{font:600 13px var(--f-mono);color:var(--accent)}
+.branch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:4px 12px;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}
+.branch .if{color:var(--ink)}
+.branch .then{color:var(--ink-2)}
+
+/* 周期条 */
+.cycle{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-block:8px 6px}
+.cy{background:var(--neu-bg);border-radius:6px;padding:10px;font-size:12px;color:var(--ink-2);display:grid;gap:2px;min-width:0}
+.cy b{font-size:13px;color:var(--ink)}
+.cy.done{opacity:.6}
+.cy.here{background:var(--accent-soft);outline:2px solid var(--accent);outline-offset:-2px;opacity:1}
+
+/* 时间轴 */
+.tl-q{margin-top:22px}
+.tl-q h3{font:700 15px var(--f-display);padding-bottom:8px;border-bottom:2px solid var(--ink);margin-bottom:4px}
+.ev{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 16px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ev .when{font:500 13px var(--f-mono);color:var(--ink-2)}
+.ev .body{display:grid;gap:4px;min-width:0}
+.ev .t{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.ev .t h4{margin:0;font-size:15px}
+.ev .cat{font-size:12px;color:var(--muted)}
+.ev p{font-size:14px;color:var(--ink-2)}
+.ev .watch{font-size:13px;color:var(--ink-2)}
+.ev .watch b{color:var(--ink);font-weight:500}
+
+/* 情景卡 */
+.scn{display:grid;gap:8px;align-content:start;border-top:4px solid var(--c)}
+.scn .prob{font:600 30px/1 var(--f-mono)}
+.scn ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink-2)}
+
+footer{padding-block:32px 48px;color:var(--muted);font-size:13px}
+.src{columns:2;column-gap:32px;font-size:13px;padding-left:18px;margin:0}
+.src li{break-inside:avoid;margin-bottom:4px}
+
+@media (max-width:860px){
+  .verdict,.grid2,.grid3{grid-template-columns:minmax(0,1fr)}
+  .cycle{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .src{columns:1}
+}
+@media (max-width:600px){
+  .srow{grid-template-columns:minmax(0,1fr) 54px;grid-template-areas:"f w" "r r" "b v"}
+  .srow .f{grid-area:f}.srow .w{grid-area:w;text-align:right}.srow .r{grid-area:r}.srow .dbar{grid-area:b}.srow .v{grid-area:v}
+  .ev{grid-template-columns:minmax(0,1fr)}
+  .branch{grid-template-columns:minmax(0,1fr)}
+  .lv{grid-template-columns:84px 56px minmax(0,1fr)}
+  .cycle{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+html{scroll-behavior:smooth;scroll-padding-top:56px}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="mast-top">
+      <div>
+        <div class="eyebrow">BTC · MACRO · CYCLE</div>
+        <h1>BTC 周期雷达</h1>
+      </div>
+      <div class="asof">数据截至 2026-10-14（9 月 CPI 公布日）· 推演至 2027-12</div>
+    </div>
+    <div class="verdict">
+      <div class="verdict-main">
+        <div class="eyebrow">当前阶段判断</div>
+        <div class="phase">熊市末段反弹 / 再积累区间</div>
+        <ul>
+          <li>价格卡在 365 日均线（约 $81.7k）上，牛熊分界线还没选方向。</li>
+          <li>9 月 CPI 偏热，10/27-28 FOMC 加息概率约 51%，美股和 BTC 短期都偏空。</li>
+          <li>10 月 CPI（11/10 公布）基准估算回落到 headline 0.14% / core 0.19%，是 11 月的潜在利多窗口。</li>
+          <li>舆情模型综合 <b class="num">−0.85</b>，偏空。压力几乎都来自宏观，资金面只是轻微偏空，杠杆已清。</li>
+        </ul>
+      </div>
+      <div class="tiles">
+        <div class="tile"><span class="k">BTC 现价</span><span class="v">≈ $82,000</span><span class="d">较 ATH $126k −35%，同比 −26%</span></div>
+        <div class="tile"><span class="k">9 月 CPI / 核心环比</span><span class="v">3.7% / 0.3%</span><span class="d">预期 3.6% / 0.2%</span></div>
+        <div class="tile"><span class="k">10Y 美债</span><span class="v">5.28%</span><span class="d">24 年高位</span></div>
+        <div class="tile"><span class="k">10 月加息概率</span><span class="v">≈ 51%</span><span class="d">CPI 前约 24%</span></div>
+        <div class="tile"><span class="k">ETF 累计净流入</span><span class="v">$57.1B</span><span class="d">10/7–10/12 净流出 $773M</span></div>
+        <div class="tile"><span class="k">舆情综合得分</span><span class="v">−0.85</span><span class="d">区间 −2 ~ +2，偏空</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="目录">
+  <div class="wrap">
+    <a href="#impact">结论</a><a href="#cpi">CPI 预估</a><a href="#indicators">指标面板</a><a href="#signals">信号组合</a><a href="#sentiment">舆情模型</a><a href="#mm">做市商复盘</a><a href="#window">关键窗口</a><a href="#cycle">牛熊阶段</a><a href="#timeline">时间轴</a><a href="#forecast">2027 推演</a><a href="#sources">来源</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<section id="impact">
+  <div class="sec-head">
+    <div class="eyebrow">01 · 结论</div>
+    <h2>对美股、BTC 是利多还是利空</h2>
+  </div>
+  <div class="tscroll">
+    <table>
+      <thead><tr><th>资产</th><th>短期（2~4 周）</th><th>中期（到 2026 年底）</th><th>逻辑</th></tr></thead>
+      <tbody>
+        <tr><td><b>美股</b></td><td><span class="pill bad">▼ 利空</span></td><td><span class="pill neu">● 中性偏多</span></td><td class="small">10Y 5.28%、30Y 约 5.6% 压估值，科技股最伤（CPI 当日 Nasdaq 100 约 −1.2%）。就业已转弱，Fed 在能源供给冲击里加息，滞胀风险上升。中期选举后的季节性偏正面。</td></tr>
+        <tr><td><b>BTC</b></td><td><span class="pill bad">▼ 利空</span></td><td><span class="pill warn">◆ 看 $74.9k 守不守</span></td><td class="small">实际利率上行压制无息资产。CPI 后跌约 1.5% 到 $82k，ETH 跌约 4%。抗跌是因为 10/13 已提前清掉多头杠杆，同期比黄金、白银跌得少。</td></tr>
+        <tr><td><b>中期选举 / 支持率</b></td><td><span class="pill bad">▼ 情绪利空</span></td><td><span class="pill neu">● 大部分已定价</span></td><td class="small">民主党拿众院约 90%、参院约 62%。市场结构法案大概率推迟到 2027 年以后。结果落地后可能出现利空出尽。</td></tr>
+        <tr><td><b>SEC 规则建设</b></td><td><span class="pill neu">● 影响小</span></td><td><span class="pill good">▲ 结构性利多</span></td><td class="small">Atkins 表示没有法案也推进发行、过户代理、托管三项规则。正式规则比指引难推翻，至少到 2028 年基本安全。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="cpi">
+  <div class="sec-head">
+    <div class="eyebrow">02 · 通胀</div>
+    <h2>9 月 CPI 复盘与 10 月 CPI 预估</h2>
+    <p class="lead">用汽油、柴油、租金、二手车和服务价格分项加权估算 10 月 CPI（BLS 定于 11/10 08:30 ET 公布）。权重为 CPI 相对重要性近似值，能源已按油价上涨上调。</p>
+  </div>
+  <div class="grid2">
+    <div class="panel">
+      <h3>9 月 vs 10 月三种情景（环比 %）</h3>
+      <div class="legend" style="margin-top:8px"><span><i class="sq" style="background:var(--s1)"></i>Headline</span><span><i class="sq" style="background:var(--s2)"></i>Core</span></div>
+      <div class="chart" id="chart-cpi"></div>
+      <p class="note">核心印成 0.3% 的概率约 30%。最大变量是 OER，以及能源对机票、运输服务的二次传导。2025 年 10 月因政府停摆缺少 CPI 数据，今年 10 月的同比口径可能有技术性扭曲，以环比为主。</p>
+    </div>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>分项</th><th class="num">9 月实际</th><th>10 月假设与依据</th></tr></thead>
+        <tbody id="cpi-rows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="indicators">
+  <div class="sec-head">
+    <div class="eyebrow">03 · 指标面板</div>
+    <h2>重要指标与阈值</h2>
+    <p class="lead">每项给出当前值、状态和触发阈值。状态是对 BTC 中短期方向的判断，「待定」表示数据未接入或方向取决于后续事件。</p>
+  </div>
+  <div class="counts" id="ind-counts"></div>
+  <div class="chips" id="ind-chips" role="group" aria-label="按类别筛选"></div>
+  <div class="tscroll">
+    <table class="ind-table">
+      <thead><tr><th>指标</th><th>当前值</th><th>状态</th><th>利多信号</th><th>利空信号</th><th>为什么重要</th></tr></thead>
+      <tbody id="ind-rows"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="signals">
+  <div class="sec-head">
+    <div class="eyebrow">04 · 信号组合</div>
+    <h2>要盯的信号：单看一个指标会误判，看组合</h2>
+    <p class="lead">把衍生品、现货资金和宏观指标拼起来判断「谁在推价格」。状态按 2026-10-14 数据评估。</p>
+  </div>
+  <div class="grid3" id="sig-cards"></div>
+</section>
+
+<section id="sentiment">
+  <div class="sec-head">
+    <div class="eyebrow">05 · 舆情模型</div>
+    <h2>BTC 舆情打分模型</h2>
+    <p class="lead">综合得分 = Σ(权重 × 打分)，每项打分范围 −2 ~ +2。拖动滑块可按新数据改分，得分和档位会实时更新。档位：≤ −1 强利空，−1 ~ −0.4 偏空，±0.4 中性，0.4 ~ 1 偏多，≥ 1 强利多。</p>
+  </div>
+  <div class="panel">
+    <div class="score-box">
+      <div><div class="eyebrow">综合得分</div><div class="score-big" id="score-val">−0.85</div></div>
+      <div><div class="eyebrow">档位</div><div id="score-regime" style="margin-top:6px"></div></div>
+      <div id="score-cats" class="small muted"></div>
+      <button class="btn" id="score-reset" type="button">恢复默认打分</button>
+    </div>
+    <div id="score-rows"></div>
+  </div>
+</section>
+
+<section id="mm">
+  <div class="sec-head">
+    <div class="eyebrow">06 · 做市商视角</div>
+    <h2>近两个月 BTC 走势复盘</h2>
+    <p class="lead">用 Wyckoff 阶段和流动性猎杀框架解读价格行为。这是推断，用来识别模式，不能证明存在人为操纵。图中只连接有报道或可推算的节点价，不是逐日 K 线。</p>
+  </div>
+  <div class="panel">
+    <div class="chart" id="chart-price"></div>
+    <p class="note">色带 A–F 为阶段划分。参考线：$87k 区间上沿、$80k 心理位、$74.9k 9/15 扫损低点、$72.2k 200D EMA。悬停查看节点详情。</p>
+  </div>
+  <div class="tscroll" style="margin-top:16px">
+    <table>
+      <thead><tr><th>阶段</th><th>时间</th><th>价格行为</th><th>资金 / 事件</th><th>手法解读</th></tr></thead>
+      <tbody id="phase-rows"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="window">
+  <div class="sec-head">
+    <div class="eyebrow">07 · 关键窗口</div>
+    <h2>10/27 – 11/10：五个事件叠加</h2>
+    <p class="lead">典型剧本：交割前向 max pain 压价，扫 $80k 心理位（Polymarket 给 10 月触及 $80k 的概率 72%），甚至回踩 $76k–78k 或 $74.9k；交割后 gamma 释放，再由 FOMC 和 11/10 CPI 定方向。上方 $90k–95k 堆了大量 Call，放量破 $87k 可能触发 gamma squeeze。</p>
+  </div>
+  <div class="grid2">
+    <div class="stack" id="plays"></div>
+    <div class="panel">
+      <h3>关键价位（距现价 $82,000）</h3>
+      <div class="levels" id="levels" style="margin-top:8px"></div>
+    </div>
+  </div>
+</section>
+
+<section id="cycle">
+  <div class="sec-head">
+    <div class="eyebrow">08 · 牛熊阶段</div>
+    <h2>四年周期坐标</h2>
+    <p class="lead">2025 年 10 月见顶约 $126k，约是减半后 18 个月。前两轮从顶部到熊底都是约 12 个月（2017-12 → 2018-12，2021-11 → 2022-11），本轮熊底时间窗正落在 2026 年 10–11 月。本轮最大回撤约 −54%，远浅于历史 −77% ~ −84%：可能是 ETF 时代波动收敛，也可能是还没跌透。</p>
+  </div>
+  <div class="panel">
+    <div class="cycle">
+      <div class="cy done"><b>主升 / 见顶</b>2025-10 · $126k</div>
+      <div class="cy done"><b>熊市下跌</b>2025-10 → 2026-06</div>
+      <div class="cy done"><b>阶段低点</b>2026-06 · $57.8k–59.3k</div>
+      <div class="cy here"><b>反弹 / 再积累 ← 现在</b>$75k–87k 区间</div>
+      <div class="cy"><b>减半前复苏</b>2027（预期）</div>
+      <div class="cy"><b>减半</b>约 2028-04</div>
+    </div>
+    <div class="grid2" style="margin-top:14px">
+      <div><h3>牛市确认（同时满足）</h3><ul class="small" style="color:var(--ink-2);padding-left:18px;margin:6px 0 0">
+        <li>周线收在 $87k–90k 以上</li><li>ETF 连续净流入，Coinbase 溢价转正</li><li>Fed 暂停加息或转鸽，10Y 回落到 4.9% 以下</li></ul></div>
+      <div><h3>熊市延续（任一触发）</h3><ul class="small" style="color:var(--ink-2);padding-left:18px;margin:6px 0 0">
+        <li>日线有效跌破 $74.9k（9/15 低点，同时接近短期持有者成本 $74.5k）</li><li>Strategy mNAV 跌破 1，停止买入</li><li>10 月、12 月连续加息，Brent 突破 $115</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="timeline">
+  <div class="sec-head">
+    <div class="eyebrow">09 · 时间轴</div>
+    <h2>2026 Q4 – 2027 Q4 大事件</h2>
+    <p class="lead">带「预计」的日期为按惯例推算，FOMC 2027 日程来自 Fed 公布的暂定表。影响方向针对 BTC。</p>
+  </div>
+  <div class="chips" id="tl-chips" role="group" aria-label="按类别筛选事件"></div>
+  <div id="tl-list"></div>
+  <div class="panel" style="margin-top:22px">
+    <h3>没有固定日期、但随时可能改写剧本的变量</h3>
+    <ul class="small" style="color:var(--ink-2);padding-left:18px;margin:8px 0 0;display:grid;gap:4px">
+      <li><b>美伊停火 / 霍尔木兹海峡重开</b>：最大的单一利多变量。油价回落会经 CPI 直接压低加息概率。9 月底伊朗的七点方案仍在等美方答复。</li>
+      <li><b>中东供给再冲击</b>：胡塞武装袭击沙特设施、飓风影响墨西哥湾产量，Brent 已回到 $106。</li>
+      <li><b>美股深度回调</b>：10Y 在 5.3% 附近，若科技股估值崩塌，BTC 短期会跟跌，之后可能成为 Fed 转向的导火索。</li>
+      <li><b>Strategy 资金链</b>：mNAV 1.07、周买入降至 250 BTC 并在回购优先股，若被迫卖币会是重大利空（目前没有迹象）。</li>
+      <li><b>财政部收益率干预加码</b>：Bessent 称有「大工具箱」，可动用近 $1 万亿 TGA 回购长债。</li>
+    </ul>
+  </div>
+</section>
+
+<section id="forecast">
+  <div class="sec-head">
+    <div class="eyebrow">10 · 推演</div>
+    <h2>到 2027 年底的三种情景</h2>
+    <p class="lead">按季末价格推演，概率为基于 2026-10-14 数据的主观判断，用于对照后续信号，不是价格目标。</p>
+  </div>
+  <div class="panel">
+    <div class="legend"><span><i style="background:var(--s1)"></i>基准：熊底 → 减半前复苏</span><span><i style="background:var(--s2)"></i>深熊 / 滞胀</span><span><i style="background:var(--s3)"></i>牛市快速重启</span></div>
+    <div class="chart" id="chart-fc"></div>
+    <p class="note">概率加权的 2027 年底预期约 <b class="num" id="fc-ev"></b>。区间的上下沿由触发条件决定，见下方情景卡。</p>
+  </div>
+  <div class="tscroll" style="margin-top:16px">
+    <table>
+      <thead><tr><th>情景</th><th class="num">概率</th><th class="num">26Q4 末</th><th class="num">27Q1 末</th><th class="num">27Q2 末</th><th class="num">27Q3 末</th><th class="num">27Q4 末</th></tr></thead>
+      <tbody id="fc-rows"></tbody>
+    </table>
+  </div>
+  <div class="grid3" id="scn-cards" style="margin-top:16px"></div>
+</section>
+
+<section id="sources">
+  <div class="sec-head">
+    <div class="eyebrow">11 · 来源</div>
+    <h2>数据来源</h2>
+    <p class="lead">CPI 分项来自 BLS 原始发布；ETF 流向、爆仓、期权、恐贪指数等部分来自二级媒体，各家数值有出入，关键数字建议用 Farside、SoSoValue、Coinglass、Glassnode 复核。</p>
+  </div>
+  <ul class="src" id="src-list"></ul>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">BTC 周期雷达 · 数据截至 2026-10-14 · 情景与概率为主观推演</div>
+</footer>
+
+<script src="data.js"></script>
+<script src="data2.js"></script>
+<script src="app.js"></script>
+<script src="charts.js"></script>
+</body>
+</html>
